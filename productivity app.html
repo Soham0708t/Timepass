@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌈 Productivity Pal</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sun: #FFD93D;
+    --coral: #FF6B6B;
+    --mint: #6BCB77;
+    --sky: #4D96FF;
+    --lilac: #C77DFF;
+    --cream: #FFFBF0;
+    --ink: #2D2D2D;
+    --shadow: 4px 4px 0px #2D2D2D;
+    --shadow-sm: 2px 2px 0px #2D2D2D;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--cream);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 20%, #FFD93D33 0%, transparent 40%),
+      radial-gradient(circle at 85% 80%, #C77DFF33 0%, transparent 40%),
+      radial-gradient(circle at 70% 10%, #6BCB7733 0%, transparent 30%);
+    overflow-x: hidden;
+  }
+
+  /* Floating doodles */
+  .doodle {
+    position: fixed;
+    font-size: 2rem;
+    opacity: 0.15;
+    pointer-events: none;
+    animation: float 6s ease-in-out infinite;
+    z-index: 0;
+  }
+  .doodle:nth-child(1) { top: 5%; left: 3%; animation-delay: 0s; }
+  .doodle:nth-child(2) { top: 20%; right: 4%; animation-delay: 1s; }
+  .doodle:nth-child(3) { bottom: 15%; left: 5%; animation-delay: 2s; }
+  .doodle:nth-child(4) { bottom: 5%; right: 3%; animation-delay: 3s; }
+  .doodle:nth-child(5) { top: 50%; left: 1%; animation-delay: 1.5s; }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0) rotate(-5deg); }
+    50% { transform: translateY(-15px) rotate(5deg); }
+  }
+
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+    animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  header h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(2.2rem, 6vw, 3.5rem);
+    color: var(--ink);
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  header h1 span {
+    display: inline-block;
+    animation: wobble 3s ease-in-out infinite;
+  }
+  header h1 span:nth-child(2) { color: var(--coral); animation-delay: 0.1s; }
+  header h1 span:nth-child(3) { color: var(--sky); animation-delay: 0.2s; }
+  header h1 span:nth-child(4) { color: var(--mint); animation-delay: 0.3s; }
+
+  @keyframes wobble {
+    0%, 100% { transform: rotate(-2deg); }
+    50% { transform: rotate(2deg); }
+  }
+
+  header p {
+    font-size: 1rem;
+    color: #888;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  /* Tab Nav */
+  .tabs {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .tab-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.05rem;
+    padding: 10px 22px;
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    background: white;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: all 0.15s ease;
+    color: var(--ink);
+    position: relative;
+    top: 0;
+  }
+
+  .tab-btn:hover { top: -2px; box-shadow: 6px 6px 0px var(--ink); }
+  .tab-btn:active { top: 2px; box-shadow: 1px 1px 0px var(--ink); }
+
+  .tab-btn.active[data-tab="notes"] { background: var(--sun); }
+  .tab-btn.active[data-tab="tasks"] { background: var(--mint); }
+  .tab-btn.active[data-tab="timer"] { background: var(--coral); color: white; }
+
+  /* Panels */
+  .panel { display: none; animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .panel.active { display: block; }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Card base */
+  .card {
+    background: white;
+    border: 3px solid var(--ink);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+
+  /* ===== NOTES ===== */
+  .notes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .sticky-note {
+    border: 3px solid var(--ink);
+    border-radius: 12px;
+    padding: 16px;
+    min-height: 140px;
+    position: relative;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease;
+    cursor: grab;
+  }
+  .sticky-note:hover { transform: rotate(-1deg) scale(1.02); }
+
+  .sticky-note textarea {
+    width: 100%;
+    height: 90px;
+    border: none;
+    background: transparent;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ink);
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+  }
+
+  .note-colors {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .color-dot {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--ink);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .color-dot:hover { transform: scale(1.3); }
+
+  .delete-note {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: none; border: none;
+    font-size: 1rem; cursor: pointer;
+    opacity: 0.4; transition: opacity 0.2s;
+    line-height: 1;
+  }
+  .delete-note:hover { opacity: 1; }
+
+  .add-note-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    padding: 12px 24px;
+    background: var(--sun);
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: all 0.15s;
+    position: relative; top: 0;
+    color: var(--ink);
+  }
+  .add-note-btn:hover { top: -2px; box-shadow: 6px 6px 0 var(--ink); }
+  .add-note-btn:active { top: 2px; box-shadow: 1px 1px 0 var(--ink); }
+
+  /* ===== TASKS ===== */
+  .task-input-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .task-input {
+    flex: 1;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 12px 16px;
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    outline: none;
+    background: white;
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.15s;
+  }
+  .task-input:focus { box-shadow: var(--shadow); }
+
+  .add-task-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    padding: 12px 20px;
+    background: var(--mint);
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.15s;
+    position: relative; top: 0;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .add-task-btn:hover { top: -2px; box-shadow: var(--shadow); }
+  .add-task-btn:active { top: 2px; box-shadow: none; }
+
+  .task-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: white;
+    border: 3px solid var(--ink);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+    animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .task-item.done {
+    opacity: 0.6;
+    background: #f0f0f0;
+  }
+  .task-item.done .task-text { text-decoration: line-through; }
+
+  .task-check {
+    width: 26px; height: 26px;
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    background: white;
+    transition: all 0.15s ease;
+  }
+  .task-check:hover { background: var(--sun); transform: scale(1.1); }
+  .task-item.done .task-check { background: var(--mint); }
+
+  .task-text {
+    flex: 1;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+
+  .task-priority {
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .task-priority:hover { transform: scale(1.3); }
+
+  .delete-task {
+    background: none; border: none;
+    font-size: 1rem; cursor: pointer;
+    opacity: 0.3; transition: opacity 0.2s;
+  }
+  .delete-task:hover { opacity: 1; }
+
+  .task-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.85rem;
+    padding: 5px 14px;
+    border: 2px solid var(--ink);
+    border-radius: 50px;
+    background: white;
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ===== TIMER ===== */
+  .timer-card {
+    text-align: center;
+    background: var(--coral);
+    border: 3px solid var(--ink);
+    border-radius: 24px;
+    padding: 36px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+
+  .timer-mode-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .mode-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.6);
+    border-radius: 50px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .mode-btn.active, .mode-btn:hover {
+    background: white;
+    color: var(--coral);
+    border-color: white;
+  }
+
+  .timer-display {
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(4rem, 15vw, 7rem);
+    color: white;
+    line-height: 1;
+    text-shadow: 4px 4px 0 rgba(0,0,0,0.15);
+    margin-bottom: 8px;
+    transition: transform 0.1s;
+  }
+  .timer-display.tick { animation: tick 0.1s ease; }
+  @keyframes tick { 0% { transform: scale(1.03); } 100% { transform: scale(1); } }
+
+  .timer-label {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: rgba(255,255,255,0.8);
+    margin-bottom: 28px;
+  }
+
+  .timer-progress {
+    width: 100%;
+    height: 14px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50px;
+    border: 2px solid rgba(255,255,255,0.5);
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .timer-bar {
+    height: 100%;
+    background: white;
+    border-radius: 50px;
+    transition: width 1s linear;
+  }
+
+  .timer-controls {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .timer-btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    padding: 14px 28px;
+    background: white;
+    border: 3px solid var(--ink);
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    color: var(--ink);
+    transition: all 0.15s;
+    position: relative; top: 0;
+  }
+  .timer-btn:hover { top: -2px; box-shadow: 6px 6px 0 rgba(0,0,0,0.3); }
+  .timer-btn:active { top: 2px; box-shadow: none; }
+  .timer-btn.pause { background: var(--sun); }
+
+  .sessions-count {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  .tomato { font-size: 1.5rem; transition: transform 0.3s; }
+  .tomato.earned { animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  .timer-task-label {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.85);
+    margin-top: 12px;
+    min-height: 1.2em;
+  }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 32px;
+    opacity: 0.5;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: var(--ink);
+  }
+
+  /* Confetti burst */
+  .confetti-piece {
+    position: fixed;
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    pointer-events: none;
+    z-index: 9999;
+    animation: confettiFall 1.2s ease-out forwards;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(300px) rotate(720deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Floating doodles -->
+<div class="doodle">⭐</div>
+<div class="doodle">🌸</div>
+<div class="doodle">✨</div>
+<div class="doodle">🌈</div>
+<div class="doodle">💫</div>
+
+<div class="app">
+  <header>
+    <h1>
+      <span>🌟</span><span>Productivity</span> <span>Pal</span><span>!</span>
+    </h1>
+    <p>your fun little work buddy ✨</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="notes" onclick="switchTab('notes')">📝 Notes</button>
+    <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks')">✅ Tasks</button>
+    <button class="tab-btn" data-tab="timer" onclick="switchTab('timer')">🍅 Timer</button>
+  </div>
+
+  <!-- NOTES PANEL -->
+  <div class="panel active" id="panel-notes">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:8px;">
+      <button class="add-note-btn" onclick="addNote()">＋ New Sticky</button>
+      <div class="note-colors" id="palette">
+        <div class="color-dot" style="background:#FFD93D" data-color="#FFD93D" onclick="setColor('#FFD93D')" title="Yellow"></div>
+        <div class="color-dot" style="background:#FF6B6B" data-color="#FF6B6B" onclick="setColor('#FF6B6B')" title="Coral"></div>
+        <div class="color-dot" style="background:#6BCB77" data-color="#6BCB77" onclick="setColor('#6BCB77')" title="Mint"></div>
+        <div class="color-dot" style="background:#4D96FF" data-color="#4D96FF" onclick="setColor('#4D96FF')" title="Sky"></div>
+        <div class="color-dot" style="background:#C77DFF" data-color="#C77DFF" onclick="setColor('#C77DFF')" title="Lilac"></div>
+        <div class="color-dot" style="background:#FFB347" data-color="#FFB347" onclick="setColor('#FFB347')" title="Peach"></div>
+      </div>
+    </div>
+    <div class="notes-grid" id="notes-grid"></div>
+  </div>
+
+  <!-- TASKS PANEL -->
+  <div class="panel" id="panel-tasks">
+    <div class="card">
+      <div class="task-stats" id="task-stats">
+        <span class="stat-pill" id="stat-total">0 tasks</span>
+        <span class="stat-pill" id="stat-done" style="background:var(--mint)">0 done 🎉</span>
+        <span class="stat-pill" id="stat-left" style="background:var(--sun)">0 left</span>
+      </div>
+      <div class="task-input-row">
+        <input class="task-input" id="task-input" placeholder="What needs doing? 🤔" onkeydown="if(event.key==='Enter') addTask()">
+        <button class="add-task-btn" onclick="addTask()">＋ Add</button>
+      </div>
+      <div class="task-list" id="task-list">
+        <div class="empty" id="tasks-empty">No tasks yet! Add one above 👆</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMER PANEL -->
+  <div class="panel" id="panel-timer">
+    <div class="timer-card">
+      <div class="timer-mode-btns">
+        <button class="mode-btn active" onclick="setMode('pomodoro')">🍅 Pomodoro</button>
+        <button class="mode-btn" onclick="setMode('short')">☕ Short Break</button>
+        <button class="mode-btn" onclick="setMode('long')">🌴 Long Break</button>
+      </div>
+      <div class="timer-display" id="timer-display">25:00</div>
+      <div class="timer-label" id="timer-label">Focus time! You got this 💪</div>
+      <div class="timer-progress">
+        <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+      </div>
+      <div class="timer-controls">
+        <button class="timer-btn" id="start-btn" onclick="startTimer()">▶ Start</button>
+        <button class="timer-btn pause" id="pause-btn" onclick="pauseTimer()" style="display:none">⏸ Pause</button>
+        <button class="timer-btn" onclick="resetTimer()">↺ Reset</button>
+      </div>
+      <div class="timer-task-label" id="timer-task-label"></div>
+    </div>
+    <div class="card" style="text-align:center;">
+      <div style="font-family:'Fredoka One',cursive; font-size:1rem; margin-bottom:10px; color:#888;">Sessions completed</div>
+      <div class="sessions-count" id="sessions-count">
+        <span style="font-family:'Fredoka One',cursive; opacity:0.4; font-size:0.9rem;">Complete a session to earn a 🍅</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+let notes = [];
+let tasks = [];
+let currentColor = '#FFD93D';
+let timerMode = 'pomodoro';
+let timerDurations = { pomodoro: 25*60, short: 5*60, long: 15*60 };
+let timerLabels = { pomodoro: 'Focus time! You got this 💪', short: 'Grab a coffee ☕', long: 'Stretch & relax 🌴' };
+let timeLeft = timerDurations.pomodoro;
+let totalTime = timerDurations.pomodoro;
+let timerRunning = false;
+let timerInterval = null;
+let sessions = 0;
+
+// ===== TABS =====
+function switchTab(tab) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+}
+
+// ===== NOTES =====
+function setColor(c) { currentColor = c; }
+
+function addNote() {
+  const id = Date.now();
+  notes.push({ id, text: '', color: currentColor });
+  renderNotes();
+  setTimeout(() => {
+    const ta = document.getElementById('note-' + id);
+    if (ta) ta.focus();
+  }, 50);
+}
+
+function deleteNote(id) {
+  notes = notes.filter(n => n.id !== id);
+  renderNotes();
+}
+
+function updateNote(id, text) {
+  const n = notes.find(n => n.id === id);
+  if (n) n.text = text;
+}
+
+function renderNotes() {
+  const grid = document.getElementById('notes-grid');
+  if (notes.length === 0) {
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1">Click "+ New Sticky" to jot something down 📝</div>';
+    return;
+  }
+  grid.innerHTML = notes.map(n => `
+    <div class="sticky-note" style="background:${n.color}">
+      <button class="delete-note" onclick="deleteNote(${n.id})">✕</button>
+      <textarea id="note-${n.id}" placeholder="Write something..." oninput="updateNote(${n.id}, this.value)">${n.text}</textarea>
+    </div>
+  `).join('');
+}
+
+// ===== TASKS =====
+function addTask() {
+  const input = document.getElementById('task-input');
+  const text = input.value.trim();
+  if (!text) return;
+  tasks.push({ id: Date.now(), text, done: false, priority: false });
+  input.value = '';
+  renderTasks();
+  confettiBurst(document.querySelector('.add-task-btn'));
+}
+
+function toggleTask(id) {
+  const t = tasks.find(t => t.id === id);
+  if (t) {
+    t.done = !t.done;
+    if (t.done) confettiBurst(document.getElementById('check-' + id));
+    renderTasks();
+  }
+}
+
+function togglePriority(id) {
+  const t = tasks.find(t => t.id === id);
+  if (t) { t.priority = !t.priority; renderTasks(); }
+}
+
+function deleteTask(id) {
+  tasks = tasks.filter(t => t.id !== id);
+  renderTasks();
+}
+
+function renderTasks() {
+  const list = document.getElementById('task-list');
+  const empty = document.getElementById('tasks-empty');
+  const done = tasks.filter(t => t.done).length;
+  const total = tasks.length;
+
+  document.getElementById('stat-total').textContent = total + ' task' + (total !== 1 ? 's' : '');
+  document.getElementById('stat-done').textContent = done + ' done 🎉';
+  document.getElementById('stat-left').textContent = (total - done) + ' left';
+
+  if (tasks.length === 0) {
+    list.innerHTML = '<div class="empty" id="tasks-empty">No tasks yet! Add one above 👆</div>';
+    return;
+  }
+
+  const sorted = [...tasks].sort((a, b) => b.priority - a.priority || a.done - b.done);
+  list.innerHTML = sorted.map(t => `
+    <div class="task-item ${t.done ? 'done' : ''}">
+      <div class="task-check" id="check-${t.id}" onclick="toggleTask(${t.id})">${t.done ? '✓' : ''}</div>
+      <span class="task-text">${escHtml(t.text)}</span>
+      <span class="task-priority" onclick="togglePriority(${t.id})" title="Toggle priority">${t.priority ? '🔥' : '⚪'}</span>
+      <button class="delete-task" onclick="deleteTask(${t.id})">✕</button>
+    </div>
+  `).join('');
+
+  // update timer task label
+  const nextTask = tasks.find(t => !t.done);
+  document.getElementById('timer-task-label').textContent = nextTask ? '📌 Next up: ' + nextTask.text : '';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ===== TIMER =====
+function setMode(mode) {
+  timerMode = mode;
+  document.querySelectorAll('.mode-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['pomodoro','short','long'][i] === mode);
+  });
+  resetTimer();
+  document.getElementById('timer-label').textContent = timerLabels[mode];
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
+}
+
+function updateDisplay() {
+  const el = document.getElementById('timer-display');
+  el.textContent = formatTime(timeLeft);
+  el.classList.remove('tick');
+  void el.offsetWidth;
+  el.classList.add('tick');
+  document.getElementById('timer-bar').style.width = (timeLeft / totalTime * 100) + '%';
+}
+
+function startTimer() {
+  if (timerRunning) return;
+  timerRunning = true;
+  document.getElementById('start-btn').style.display = 'none';
+  document.getElementById('pause-btn').style.display = '';
+  timerInterval = setInterval(() => {
+    if (timeLeft > 0) {
+      timeLeft--;
+      updateDisplay();
+    } else {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      sessions++;
+      renderSessions();
+      confettiBurst(document.getElementById('timer-display'));
+      document.getElementById('start-btn').style.display = '';
+      document.getElementById('pause-btn').style.display = 'none';
+      document.getElementById('timer-label').textContent = timerMode === 'pomodoro' ? '🎉 Session done! Take a break!' : '✨ Break over! Let\'s go!';
+      if (timerMode === 'pomodoro') {
+        setTimeout(() => setMode(sessions % 4 === 0 ? 'long' : 'short'), 1500);
+      }
+    }
+  }, 1000);
+}
+
+function pauseTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  document.getElementById('start-btn').style.display = '';
+  document.getElementById('pause-btn').style.display = 'none';
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerRunning = false;
+  timeLeft = timerDurations[timerMode];
+  totalTime = timerDurations[timerMode];
+  document.getElementById('start-btn').style.display = '';
+  document.getElementById('pause-btn').style.display = 'none';
+  document.getElementById('timer-label').textContent = timerLabels[timerMode];
+  updateDisplay();
+}
+
+function renderSessions() {
+  const c = document.getElementById('sessions-count');
+  if (sessions === 0) {
+    c.innerHTML = '<span style="font-family:\'Fredoka One\',cursive; opacity:0.4; font-size:0.9rem;">Complete a session to earn a 🍅</span>';
+    return;
+  }
+  c.innerHTML = Array.from({length: sessions}, (_,i) =>
+    `<span class="tomato earned" style="animation-delay:${i*0.05}s">🍅</span>`
+  ).join('');
+}
+
+// ===== CONFETTI =====
+function confettiBurst(el) {
+  const colors = ['#FFD93D','#FF6B6B','#6BCB77','#4D96FF','#C77DFF','#FFB347'];
+  const rect = el ? el.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight/2, width: 0, height: 0 };
+  const x = rect.left + rect.width / 2;
+  const y = rect.top + rect.height / 2;
+  for (let i = 0; i < 18; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = (x + (Math.random() - 0.5) * 80) + 'px';
+    piece.style.top = y + 'px';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.transform = `rotate(${Math.random()*360}deg)`;
+    piece.style.animationDelay = (Math.random() * 0.2) + 's';
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), 1400);
+  }
+}
+
+// ===== INIT =====
+renderNotes();
+renderTasks();
+updateDisplay();
+</script>
+</body>
+</html>

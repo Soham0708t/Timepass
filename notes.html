@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notebox</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f0e8;
+    --sidebar-bg: #1a1a18;
+    --sidebar-text: #c8c4b8;
+    --sidebar-muted: #6b6860;
+    --sidebar-hover: #2a2a26;
+    --sidebar-active: #333330;
+    --accent: #c17f3a;
+    --accent-light: #e8a855;
+    --editor-bg: #faf7f2;
+    --editor-border: #e0d8cc;
+    --text-main: #2a2520;
+    --text-muted: #8c857a;
+    --danger: #c0392b;
+    --tag-bg: #ede7da;
+  }
+
+  body {
+    font-family: 'Lora', Georgia, serif;
+    background: var(--bg);
+    color: var(--text-main);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  #sidebar {
+    width: 260px;
+    min-width: 260px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #sidebar-header {
+    padding: 20px 16px 14px;
+    border-bottom: 1px solid #2e2e2a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .app-logo {
+    font-family: 'Lora', serif;
+    font-style: italic;
+    font-size: 1.3rem;
+    color: var(--accent-light);
+    letter-spacing: 0.02em;
+  }
+
+  .logo-dot { color: var(--accent); font-style: normal; }
+
+  #new-file-btn {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  #new-file-btn:hover { background: var(--accent-light); }
+
+  #sidebar-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+  }
+  #sidebar-scroll::-webkit-scrollbar { width: 4px; }
+  #sidebar-scroll::-webkit-scrollbar-thumb { background: #3a3a36; border-radius: 2px; }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    padding: 7px 10px 7px 14px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.1s;
+    gap: 6px;
+    position: relative;
+    user-select: none;
+  }
+  .file-item:hover { background: var(--sidebar-hover); }
+  .file-item.active { background: var(--sidebar-active); border-left: 2px solid var(--accent); }
+
+  .file-icon {
+    font-size: 0.9rem;
+    flex-shrink: 0;
+    color: var(--sidebar-muted);
+  }
+  .file-item.active .file-icon { color: var(--accent-light); }
+
+  .file-name {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--sidebar-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .file-item.active .file-name { color: #fff; }
+
+  .file-actions {
+    display: none;
+    gap: 4px;
+    align-items: center;
+  }
+  .file-item:hover .file-actions { display: flex; }
+
+  .file-action-btn {
+    background: none;
+    border: none;
+    color: var(--sidebar-muted);
+    cursor: pointer;
+    font-size: 0.75rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: color 0.1s, background 0.1s;
+    line-height: 1;
+  }
+  .file-action-btn:hover { color: #fff; background: #3a3a36; }
+  .file-action-btn.del:hover { color: #e74c3c; }
+
+  .toggle-btn {
+    background: none;
+    border: none;
+    color: var(--sidebar-muted);
+    cursor: pointer;
+    font-size: 0.65rem;
+    width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 3px;
+    transition: transform 0.15s, color 0.1s;
+    flex-shrink: 0;
+  }
+  .toggle-btn.open { transform: rotate(90deg); color: var(--accent); }
+  .toggle-btn.leaf { opacity: 0; pointer-events: none; }
+
+  .subfile-list { display: none; }
+  .subfile-list.open { display: block; }
+
+  .subfile-item {
+    padding-left: 32px;
+    font-size: 0.74rem;
+  }
+
+  .add-subfile-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--sidebar-muted);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 3px 8px 3px 38px;
+    width: 100%;
+    text-align: left;
+    transition: color 0.1s;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .add-subfile-btn:hover { color: var(--accent-light); }
+
+  .sidebar-group:hover .add-subfile-btn { display: block; }
+
+  #sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #2e2e2a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-info {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--sidebar-muted);
+  }
+
+  #save-all-btn {
+    background: none;
+    border: 1px solid #3a3a36;
+    color: var(--sidebar-muted);
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.15s;
+  }
+  #save-all-btn:hover { border-color: var(--accent); color: var(--accent-light); }
+
+  /* ── MAIN EDITOR ── */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--editor-bg);
+  }
+
+  #editor-topbar {
+    padding: 14px 28px 10px;
+    border-bottom: 1px solid var(--editor-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 56px;
+  }
+
+  #note-title-input {
+    flex: 1;
+    font-family: 'Lora', serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+  }
+  #note-title-input::placeholder { color: var(--text-muted); font-weight: 400; font-style: italic; }
+
+  .topbar-right {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  #save-btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  #save-btn:hover { background: var(--accent-light); }
+  #save-btn:active { transform: scale(0.97); }
+  #save-btn.saved { background: #4a7c59; }
+
+  #download-btn {
+    background: none;
+    border: 1px solid var(--editor-border);
+    color: var(--text-muted);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  #download-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .word-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  #toolbar {
+    padding: 8px 28px;
+    border-bottom: 1px solid var(--editor-border);
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    background: #f8f4ee;
+  }
+
+  .tb-btn {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    width: 30px; height: 28px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.1s;
+  }
+  .tb-btn:hover { background: var(--tag-bg); border-color: var(--editor-border); color: var(--text-main); }
+  .tb-btn.wide { width: auto; padding: 0 8px; font-size: 0.7rem; }
+  .tb-sep { width: 1px; background: var(--editor-border); margin: 0 4px; align-self: stretch; }
+
+  #editor-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 28px 28px 60px;
+  }
+
+  #editor {
+    min-height: 100%;
+    max-width: 780px;
+    margin: 0 auto;
+    font-family: 'Lora', serif;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: var(--text-main);
+    outline: none;
+  }
+
+  #editor:empty::before {
+    content: 'Start writing your note here…';
+    color: var(--text-muted);
+    font-style: italic;
+    pointer-events: none;
+  }
+
+  #editor h1 { font-size: 1.6rem; margin: 1.2em 0 0.4em; font-weight: 600; line-height: 1.3; }
+  #editor h2 { font-size: 1.25rem; margin: 1em 0 0.3em; font-weight: 600; border-bottom: 1px solid var(--editor-border); padding-bottom: 4px; }
+  #editor h3 { font-size: 1.05rem; margin: 0.8em 0 0.2em; font-weight: 600; color: var(--accent); }
+  #editor p { margin: 0.5em 0; }
+  #editor ul, #editor ol { padding-left: 1.5em; margin: 0.5em 0; }
+  #editor li { margin: 0.2em 0; }
+  #editor blockquote { border-left: 3px solid var(--accent); padding-left: 1em; margin: 1em 0; color: var(--text-muted); font-style: italic; }
+  #editor code { font-family: 'JetBrains Mono', monospace; font-size: 0.88em; background: var(--tag-bg); padding: 2px 5px; border-radius: 3px; }
+  #editor pre { background: #1a1a18; color: #c8c4b8; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 1em 0; }
+  #editor pre code { background: none; padding: 0; color: inherit; font-size: 0.85em; }
+  #editor hr { border: none; border-top: 1px solid var(--editor-border); margin: 1.5em 0; }
+  #editor a { color: var(--accent); }
+  #editor strong { font-weight: 600; }
+  #editor em { font-style: italic; }
+  #editor mark { background: #f5e6c8; padding: 1px 3px; border-radius: 2px; }
+
+  /* ── EMPTY STATE ── */
+  #empty-state {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 3rem; opacity: 0.3; }
+  .empty-text { font-style: italic; font-size: 1rem; }
+  .empty-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; opacity: 0.7; }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--editor-bg);
+    border: 1px solid var(--editor-border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 340px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  }
+  .modal h3 { font-size: 1rem; margin-bottom: 14px; }
+  .modal input {
+    width: 100%;
+    border: 1px solid var(--editor-border);
+    background: var(--bg);
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    outline: none;
+    margin-bottom: 14px;
+  }
+  .modal input:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-btn {
+    padding: 7px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    transition: all 0.15s;
+  }
+  .modal-btn.primary { background: var(--accent); color: #fff; }
+  .modal-btn.primary:hover { background: var(--accent-light); }
+  .modal-btn.cancel { background: var(--tag-bg); color: var(--text-muted); }
+  .modal-btn.cancel:hover { color: var(--text-main); }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    background: #1a1a18;
+    color: #c8c4b8;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    pointer-events: none;
+    z-index: 200;
+    border-left: 3px solid var(--accent);
+  }
+  #toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ── SCROLLBAR ── */
+  #editor-area::-webkit-scrollbar { width: 5px; }
+  #editor-area::-webkit-scrollbar-thumb { background: var(--editor-border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div id="sidebar-header">
+    <span class="app-logo">note<span class="logo-dot">·</span>box</span>
+    <button id="new-file-btn" title="New File">+</button>
+  </div>
+
+  <div id="sidebar-scroll">
+    <!-- files rendered here -->
+  </div>
+
+  <div id="sidebar-footer">
+    <span class="footer-info" id="file-count">0 files</span>
+    <button id="save-all-btn">↓ Export All</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="empty-state">
+    <div class="empty-icon">📝</div>
+    <div class="empty-text">No note selected</div>
+    <div class="empty-sub">Create a file from the sidebar to begin</div>
+  </div>
+
+  <div id="editor-panel" style="display:none; flex-direction:column; height:100%">
+    <div id="editor-topbar">
+      <input id="note-title-input" type="text" placeholder="Untitled Note" spellcheck="false">
+      <div class="topbar-right">
+        <span class="word-count" id="word-count">0 words</span>
+        <button id="download-btn">⬇ Save File</button>
+        <button id="save-btn">Save</button>
+      </div>
+    </div>
+
+    <div id="toolbar">
+      <button class="tb-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+      <button class="tb-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+      <button class="tb-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+      <button class="tb-btn" data-cmd="strikeThrough" title="Strike">S̶</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn wide" data-cmd="formatBlock" data-val="h1" title="Heading 1">H1</button>
+      <button class="tb-btn wide" data-cmd="formatBlock" data-val="h2" title="Heading 2">H2</button>
+      <button class="tb-btn wide" data-cmd="formatBlock" data-val="h3" title="Heading 3">H3</button>
+      <button class="tb-btn wide" data-cmd="formatBlock" data-val="p" title="Paragraph">¶</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-cmd="insertUnorderedList" title="Bullet list">•</button>
+      <button class="tb-btn" data-cmd="insertOrderedList" title="Numbered list">1.</button>
+      <button class="tb-btn wide" data-cmd="formatBlock" data-val="blockquote" title="Blockquote">"</button>
+      <button class="tb-btn wide" data-cmd="formatBlock" data-val="pre" title="Code block">&lt;/&gt;</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn" data-cmd="insertHorizontalRule" title="Divider">—</button>
+      <button class="tb-btn" title="Highlight" id="highlight-btn">🖊</button>
+      <div class="tb-sep"></div>
+      <button class="tb-btn wide" data-cmd="undo" title="Undo">↩</button>
+      <button class="tb-btn wide" data-cmd="redo" title="Redo">↪</button>
+    </div>
+
+    <div id="editor-area">
+      <div id="editor" contenteditable="true" spellcheck="true"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">New File</h3>
+    <input type="text" id="modal-input" placeholder="File name…" spellcheck="false">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
+      <button class="modal-btn primary" id="modal-confirm">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── STATE ──
+let state = {
+  files: [],       // [{id, name, content, children:[{id,name,content}]}]
+  activeId: null,  // currently open note id (file or subfile)
+  dirty: false,
+};
+
+// ── PERSISTENCE (localStorage) ──
+function loadState() {
+  try {
+    const saved = localStorage.getItem('notebox_v1');
+    if (saved) state.files = JSON.parse(saved);
+  } catch(e) {}
+}
+
+function saveState() {
+  localStorage.setItem('notebox_v1', JSON.stringify(state.files));
+}
+
+// ── IDs ──
+let _uid = Date.now();
+function uid() { return 'n' + (_uid++); }
+
+// ── FIND NODE ──
+function findNode(id) {
+  for (const f of state.files) {
+    if (f.id === id) return { node: f, parent: null };
+    if (f.children) {
+      for (const c of f.children) {
+        if (c.id === id) return { node: c, parent: f };
+      }
+    }
+  }
+  return null;
+}
+
+// ── RENDER SIDEBAR ──
+function renderSidebar() {
+  const scroll = document.getElementById('sidebar-scroll');
+  scroll.innerHTML = '';
+
+  let total = 0;
+  state.files.forEach(file => {
+    total++;
+    if (file.children) total += file.children.length;
+
+    const group = document.createElement('div');
+    group.className = 'sidebar-group';
+
+    const item = createFileItem(file, false);
+    group.appendChild(item);
+
+    // children
+    const subList = document.createElement('div');
+    subList.className = 'subfile-list' + (file._open ? ' open' : '');
+    subList.id = 'sub-' + file.id;
+
+    if (file.children && file.children.length) {
+      file.children.forEach(child => {
+        const ci = createFileItem(child, true);
+        subList.appendChild(ci);
+      });
+    }
+    group.appendChild(subList);
+
+    // add subfile button
+    const addSub = document.createElement('button');
+    addSub.className = 'add-subfile-btn';
+    addSub.textContent = '+ add subfile';
+    addSub.onclick = (e) => { e.stopPropagation(); openModal('subfile', file.id); };
+    group.appendChild(addSub);
+
+    scroll.appendChild(group);
+  });
+
+  document.getElementById('file-count').textContent = total + ' file' + (total !== 1 ? 's' : '');
+}
+
+function createFileItem(node, isSub) {
+  const item = document.createElement('div');
+  item.className = 'file-item' + (isSub ? ' subfile-item' : '') + (state.activeId === node.id ? ' active' : '');
+  item.dataset.id = node.id;
+
+  // toggle (only for root files)
+  const toggle = document.createElement('button');
+  toggle.className = 'toggle-btn' + (!isSub && node.children && node.children.length ? (node._open ? ' open' : '') : ' leaf');
+  toggle.textContent = '▶';
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    node._open = !node._open;
+    renderSidebar();
+  };
+
+  const icon = document.createElement('span');
+  icon.className = 'file-icon';
+  icon.textContent = isSub ? '◦' : '▪';
+
+  const name = document.createElement('span');
+  name.className = 'file-name';
+  name.textContent = node.name || 'Untitled';
+
+  const actions = document.createElement('div');
+  actions.className = 'file-actions';
+
+  const renameBtn = document.createElement('button');
+  renameBtn.className = 'file-action-btn';
+  renameBtn.title = 'Rename';
+  renameBtn.textContent = '✏';
+  renameBtn.onclick = (e) => { e.stopPropagation(); openModal('rename', node.id); };
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'file-action-btn del';
+  delBtn.title = 'Delete';
+  delBtn.textContent = '✕';
+  delBtn.onclick = (e) => { e.stopPropagation(); deleteNode(node.id); };
+
+  actions.appendChild(renameBtn);
+  actions.appendChild(delBtn);
+
+  item.appendChild(toggle);
+  item.appendChild(icon);
+  item.appendChild(name);
+  item.appendChild(actions);
+
+  item.onclick = () => openNote(node.id);
+
+  return item;
+}
+
+// ── OPEN NOTE ──
+function openNote(id) {
+  // auto-save current
+  if (state.activeId) commitCurrent();
+
+  state.activeId = id;
+  const { node } = findNode(id);
+  if (!node) return;
+
+  // show editor
+  document.getElementById('empty-state').style.display = 'none';
+  const ep = document.getElementById('editor-panel');
+  ep.style.display = 'flex';
+
+  document.getElementById('note-title-input').value = node.name || '';
+  document.getElementById('editor').innerHTML = node.content || '';
+  updateWordCount();
+  renderSidebar();
+
+  document.getElementById('editor').focus();
+}
+
+function commitCurrent() {
+  if (!state.activeId) return;
+  const res = findNode(state.activeId);
+  if (!res) return;
+  res.node.name = document.getElementById('note-title-input').value || 'Untitled';
+  res.node.content = document.getElementById('editor').innerHTML;
+  saveState();
+}
+
+// ── WORD COUNT ──
+function updateWordCount() {
+  const text = document.getElementById('editor').innerText || '';
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('word-count').textContent = words + ' word' + (words !== 1 ? 's' : '');
+}
+
+// ── MODAL ──
+let _modalMode = null, _modalTarget = null;
+
+function openModal(mode, targetId) {
+  _modalMode = mode;
+  _modalTarget = targetId;
+  const overlay = document.getElementById('modal-overlay');
+  const input = document.getElementById('modal-input');
+  const title = document.getElementById('modal-title');
+
+  if (mode === 'file') { title.textContent = 'New File'; input.value = ''; input.placeholder = 'File name…'; }
+  else if (mode === 'subfile') { title.textContent = 'New Subfile'; input.value = ''; input.placeholder = 'Subfile name…'; }
+  else if (mode === 'rename') {
+    title.textContent = 'Rename';
+    const { node } = findNode(targetId);
+    input.value = node ? node.name : '';
+    input.placeholder = 'New name…';
+  }
+
+  overlay.classList.add('open');
+  setTimeout(() => input.focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  _modalMode = null; _modalTarget = null;
+}
+
+document.getElementById('modal-cancel').onclick = closeModal;
+document.getElementById('modal-overlay').onclick = (e) => { if (e.target === e.currentTarget) closeModal(); };
+
+document.getElementById('modal-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('modal-confirm').click();
+  if (e.key === 'Escape') closeModal();
+});
+
+document.getElementById('modal-confirm').onclick = () => {
+  const val = document.getElementById('modal-input').value.trim() || 'Untitled';
+
+  if (_modalMode === 'file') {
+    const node = { id: uid(), name: val, content: '', children: [], _open: false };
+    state.files.push(node);
+    saveState();
+    renderSidebar();
+    openNote(node.id);
+    toast('File created: ' + val);
+  } else if (_modalMode === 'subfile') {
+    const parent = state.files.find(f => f.id === _modalTarget);
+    if (parent) {
+      const node = { id: uid(), name: val, content: '' };
+      if (!parent.children) parent.children = [];
+      parent.children.push(node);
+      parent._open = true;
+      saveState();
+      renderSidebar();
+      openNote(node.id);
+      toast('Subfile created: ' + val);
+    }
+  } else if (_modalMode === 'rename') {
+    const res = findNode(_modalTarget);
+    if (res) {
+      res.node.name = val;
+      if (state.activeId === _modalTarget) {
+        document.getElementById('note-title-input').value = val;
+      }
+      saveState();
+      renderSidebar();
+      toast('Renamed to: ' + val);
+    }
+  }
+
+  closeModal();
+};
+
+// ── DELETE ──
+function deleteNode(id) {
+  const res = findNode(id);
+  if (!res) return;
+
+  if (res.parent) {
+    res.parent.children = res.parent.children.filter(c => c.id !== id);
+  } else {
+    state.files = state.files.filter(f => f.id !== id);
+  }
+
+  if (state.activeId === id) {
+    state.activeId = null;
+    document.getElementById('empty-state').style.display = 'flex';
+    document.getElementById('editor-panel').style.display = 'none';
+  }
+
+  saveState();
+  renderSidebar();
+  toast('Deleted');
+}
+
+// ── NEW FILE BTN ──
+document.getElementById('new-file-btn').onclick = () => openModal('file');
+
+// ── SAVE BTN ──
+document.getElementById('save-btn').onclick = () => {
+  commitCurrent();
+  const btn = document.getElementById('save-btn');
+  btn.textContent = '✓ Saved';
+  btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = 'Save'; btn.classList.remove('saved'); }, 1500);
+  toast('Note saved');
+};
+
+// ── DOWNLOAD FILE ──
+document.getElementById('download-btn').onclick = () => {
+  if (!state.activeId) return;
+  commitCurrent();
+  const res = findNode(state.activeId);
+  if (!res) return;
+
+  const noteData = JSON.stringify({ name: res.node.name, content: res.node.content, exported: new Date().toISOString() });
+  const blob = new Blob([noteData], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (res.node.name || 'note').replace(/[^a-z0-9_\-]/gi, '_') + '.note';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Saved as .note file');
+};
+
+// ── EXPORT ALL ──
+document.getElementById('save-all-btn').onclick = () => {
+  commitCurrent();
+  const exportData = JSON.stringify({ exported: new Date().toISOString(), files: state.files });
+  const blob = new Blob([exportData], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'notebox_all.note'; a.click();
+  URL.revokeObjectURL(url);
+  toast('All notes exported as .note');
+};
+
+// ── TITLE SYNC ──
+document.getElementById('note-title-input').addEventListener('input', () => {
+  if (!state.activeId) return;
+  const res = findNode(state.activeId);
+  if (res) { res.node.name = document.getElementById('note-title-input').value; renderSidebar(); }
+});
+
+// ── EDITOR EVENTS ──
+document.getElementById('editor').addEventListener('input', () => {
+  updateWordCount();
+  if (state.activeId) {
+    const res = findNode(state.activeId);
+    if (res) res.node.content = document.getElementById('editor').innerHTML;
+  }
+});
+
+// ── TOOLBAR ──
+document.querySelectorAll('.tb-btn[data-cmd]').forEach(btn => {
+  btn.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const cmd = btn.dataset.cmd;
+    const val = btn.dataset.val || null;
+    document.execCommand(cmd, false, val);
+  });
+});
+
+document.getElementById('highlight-btn').addEventListener('mousedown', e => {
+  e.preventDefault();
+  document.execCommand('hiliteColor', false, '#f5e6c8');
+});
+
+// ── AUTO-SAVE every 30s ──
+setInterval(() => { if (state.activeId) { commitCurrent(); } }, 30000);
+
+// ── KEYBOARD ──
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    e.preventDefault();
+    document.getElementById('save-btn').click();
+  }
+});
+
+// ── TOAST ──
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── INIT ──
+loadState();
+renderSidebar();
+</script>
+</body>
+</html>
